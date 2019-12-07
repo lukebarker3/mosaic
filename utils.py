@@ -2,10 +2,10 @@ import logging
 
 
 class MosaicArgs:
-    image_to_recreate: str = ""
-    tiles_directory: str = ""
-    tile_dimensions: int = 50
-    tile_matching_resolution: int = 5
+    image: str = ""
+    directory: str = ""
+    pixels: int = 50
+    resolution: int = 5
     enlargement: int = 8
     out_file: str = "./mosaic-image.jpeg"
     verbose: bool = False
