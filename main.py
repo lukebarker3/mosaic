@@ -17,7 +17,7 @@ class MosaicApp(CommandLineApp):
         self.add_param('-p', '--pixels', required=False, default=utils.MosaicArgs.tile_dimensions, action='store', help='Pixel dimensions of each tile. E.g. 32 will create 32x32 tiles.', type=int)
         self.add_param('-r', '--resolution', required=False, default=utils.MosaicArgs.tile_matching_resolution, action='store', help='Tile matching resolution - higher values give better fit but require more processing.', type=int)
         self.add_param('-e', '--enlargement', required=False, default=utils.MosaicArgs.enlargement, action='store', help='The mosaic image\'s dimensions will be this many times larger than the original.')
-        self.add_param('o', '--out-file', required=False, default=utils.MosaicArgs.out_file, action='store', help='Send mosaic image to a custom file name.', type=str)
+        self.add_param('-o', '--out-file', required=False, default=utils.MosaicArgs.out_file, action='store', help='Send mosaic image to a custom file name.', type=str)
         self.add_param('-v', '--verbose', default=utils.MosaicArgs.verbose, action='store_true', help='Verbose logging.')
 
     def _validate_mosaic_args(self):
