@@ -14,7 +14,7 @@ class MosaicGenerator:
 
 	@staticmethod
 	def tile_block_size():
-		return TILE_SIZE / max(min(TILE_MATCH_RES, TILE_SIZE), 1)
+		return MosaicGenerator.TILE_SIZE / max(min(MosaicGenerator.TILE_MATCH_RES, MosaicGenerator.TILE_SIZE), 1)
 
 	@staticmethod
 	def worker_count():
@@ -35,11 +35,12 @@ class MosaicGenerator:
 				h_crop = (h - min_dimension) / 2
 				img = img.crop((w_crop, h_crop, w - w_crop, h - h_crop))
 
-				large_tile_img = img.resize((TILE_SIZE, TILE_SIZE), Image.ANTIALIAS)
-				small_tile_img = img.resize((int(TILE_SIZE/MosaicGenerator.tile_block_size()), int(TILE_SIZE/MosaicGenerator.tile_block_size())), Image.ANTIALIAS)
+				large_tile_img = img.resize((MosaicGenerator.TILE_SIZE, MosaicGenerator.TILE_SIZE), Image.ANTIALIAS)
+				small_tile_img = img.resize((int(MosaicGenerator.TILE_SIZE/MosaicGenerator.tile_block_size()), int(MosaicGenerator.TILE_SIZE/MosaicGenerator.tile_block_size())), Image.ANTIALIAS)
 
 				return (large_tile_img.convert('RGB'), small_tile_img.convert('RGB'))
-			except:
+			except Exception as e:
+				logging.exception(f"Tile processing error: {str(e)}")
 				return (None, None)
 
 		def get_tiles(self):
@@ -51,7 +52,7 @@ class MosaicGenerator:
 			# search the tiles directory recursively
 			for root, subFolders, files in os.walk(self.tiles_directory):
 				for tile_name in files:
-					logging.debug('Reading {:40.40}'.format(tile_name), flush=True, end='\r')
+					logging.debug('Reading {:40.40}\r'.format(tile_name))
 					tile_path = os.path.join(root, tile_name)
 					large_tile, small_tile = self.__process_tile(tile_path)
 					if large_tile:
@@ -70,11 +71,11 @@ class MosaicGenerator:
 		def get_data(self):
 			logging.info('Processing main image...')
 			img = Image.open(self.image_path)
-			w = img.size[0] * ENLARGEMENT
-			h = img.size[1]	* ENLARGEMENT
+			w = img.size[0] * MosaicGenerator.ENLARGEMENT
+			h = img.size[1]	* MosaicGenerator.ENLARGEMENT
 			large_img = img.resize((w, h), Image.ANTIALIAS)
-			w_diff = (w % TILE_SIZE)/2
-			h_diff = (h % TILE_SIZE)/2
+			w_diff = (w % MosaicGenerator.TILE_SIZE)/2
+			h_diff = (h % MosaicGenerator.TILE_SIZE)/2
 			
 			# if necessary, crop the image slightly so we use a whole number of tiles horizontally and vertically
 			if w_diff or h_diff:
@@ -117,14 +118,15 @@ class MosaicGenerator:
 
 			return best_fit_tile_index
 
-	def fit_tiles(self, work_queue, result_queue, tiles_data):
+	@staticmethod
+	def fit_tiles(work_queue, result_queue, tiles_data):
 		# this function gets run by the worker processes, one on each CPU core
-		tile_fitter = TileFitter(tiles_data)
+		tile_fitter = MosaicGenerator.TileFitter(tiles_data)
 
 		while True:
 			try:
 				img_data, img_coords = work_queue.get(True)
-				if img_data == EOQ_VALUE:
+				if img_data == MosaicGenerator.EOQ_VALUE:
 					break
 				tile_index = tile_fitter.get_best_fit_tile(img_data)
 				result_queue.put((img_coords, tile_index))
@@ -132,7 +134,7 @@ class MosaicGenerator:
 				pass
 
 		# let the result handler know that this worker has finished everything
-		result_queue.put((EOQ_VALUE, EOQ_VALUE))
+		result_queue.put((MosaicGenerator.EOQ_VALUE, MosaicGenerator.EOQ_VALUE))
 
 	class ProgressCounter:
 		def __init__(self, total):
@@ -141,32 +143,33 @@ class MosaicGenerator:
 
 		def update(self):
 			self.counter += 1
-			logging.debug("Progress: {:04.1f}%".format(100 * self.counter / self.total), flush=True, end='\r')
+			logging.debug("Progress: {:04.1f}%".format(100 * self.counter / self.total))
 
 	class MosaicImage:
 		def __init__(self, original_img):
 			self.image = Image.new(original_img.mode, original_img.size)
-			self.x_tile_count = int(original_img.size[0] / TILE_SIZE)
-			self.y_tile_count = int(original_img.size[1] / TILE_SIZE)
+			self.x_tile_count = int(original_img.size[0] / MosaicGenerator.TILE_SIZE)
+			self.y_tile_count = int(original_img.size[1] / MosaicGenerator.TILE_SIZE)
 			self.total_tiles  = self.x_tile_count * self.y_tile_count
 
 		def add_tile(self, tile_data, coords):
-			img = Image.new('RGB', (TILE_SIZE, TILE_SIZE))
+			img = Image.new('RGB', (MosaicGenerator.TILE_SIZE, MosaicGenerator.TILE_SIZE))
 			img.putdata(tile_data)
 			self.image.paste(img, coords)
 
 		def save(self, path):
 			self.image.save(path)
 
-	def build_mosaic(self, result_queue, all_tile_data_large, original_img_large):
-		mosaic = MosaicImage(original_img_large)
+	@staticmethod
+	def build_mosaic(result_queue, all_tile_data_large, original_img_large):
+		mosaic = MosaicGenerator.MosaicImage(original_img_large)
 
 		active_workers = MosaicGenerator.worker_count()
 		while True:
 			try:
 				img_coords, best_fit_tile_index = result_queue.get()
 
-				if img_coords == EOQ_VALUE:
+				if img_coords == MosaicGenerator.EOQ_VALUE:
 					active_workers -= 1
 					if not active_workers:
 						break
@@ -177,15 +180,15 @@ class MosaicGenerator:
 			except KeyboardInterrupt:
 				pass
 
-		mosaic.save(OUT_FILE)
-		logging.info('\nFinished, output is in', OUT_FILE)
+		mosaic.save(MosaicGenerator.OUT_FILE)
+		logging.info('\nFinished, output is in', MosaicGenerator.OUT_FILE)
 
 	def compose(self, original_img, tiles):
 		logging.info('Building mosaic, press Ctrl-C to abort...')
 		original_img_large, original_img_small = original_img
 		tiles_large, tiles_small = tiles
 
-		mosaic = MosaicImage(original_img_large)
+		mosaic = MosaicGenerator.MosaicImage(original_img_large)
 
 		all_tile_data_large = [list(tile.getdata()) for tile in tiles_large]
 		all_tile_data_small = [list(tile.getdata()) for tile in tiles_small]
@@ -195,17 +198,17 @@ class MosaicGenerator:
 
 		try:
 			# start the worker processes that will build the mosaic image
-			Process(target=self.build_mosaic, args=(result_queue, all_tile_data_large, original_img_large)).start()
+			Process(target=MosaicGenerator.build_mosaic, args=(result_queue, all_tile_data_large, original_img_large)).start()
 
 			# start the worker processes that will perform the tile fitting
 			for n in range(MosaicGenerator.worker_count()):
-				Process(target=self.fit_tiles, args=(work_queue, result_queue, all_tile_data_small)).start()
+				Process(target=MosaicGenerator.fit_tiles, args=(work_queue, result_queue, all_tile_data_small)).start()
 
-			progress = ProgressCounter(mosaic.x_tile_count * mosaic.y_tile_count)
+			progress = MosaicGenerator.ProgressCounter(mosaic.x_tile_count * mosaic.y_tile_count)
 			for x in range(mosaic.x_tile_count):
 				for y in range(mosaic.y_tile_count):
-					large_box = (x * TILE_SIZE, y * TILE_SIZE, (x + 1) * TILE_SIZE, (y + 1) * TILE_SIZE)
-					small_box = (x * TILE_SIZE/MosaicGenerator.tile_block_size(), y * TILE_SIZE/MosaicGenerator.tile_block_size(), (x + 1) * TILE_SIZE/MosaicGenerator.tile_block_size(), (y + 1) * TILE_SIZE/MosaicGenerator.tile_block_size())
+					large_box = (x * MosaicGenerator.TILE_SIZE, y * MosaicGenerator.TILE_SIZE, (x + 1) * MosaicGenerator.TILE_SIZE, (y + 1) * MosaicGenerator.TILE_SIZE)
+					small_box = (x * MosaicGenerator.TILE_SIZE/MosaicGenerator.tile_block_size(), y * MosaicGenerator.TILE_SIZE/MosaicGenerator.tile_block_size(), (x + 1) * MosaicGenerator.TILE_SIZE/MosaicGenerator.tile_block_size(), (y + 1) * MosaicGenerator.TILE_SIZE/MosaicGenerator.tile_block_size())
 					work_queue.put((list(original_img_small.crop(small_box).getdata()), large_box))
 					progress.update()
 
@@ -215,19 +218,19 @@ class MosaicGenerator:
 		finally:
 			# put these special values onto the queue to let the workers know they can terminate
 			for n in range(MosaicGenerator.worker_count()):
-				work_queue.put((EOQ_VALUE, EOQ_VALUE))
+				work_queue.put((MosaicGenerator.EOQ_VALUE, MosaicGenerator.EOQ_VALUE))
 
 
 	def __init__(self, mosaic_args):
 		self.mosaic_args = mosaic_args
 
 	def run(self):
-		MosaicGenerator.TILE_SIZE = self.mosaic_args.tile_dimensions
-		MosaicGenerator.TILE_MATCH_RES = self.mosaic_args.tile_matching_resolution
+		MosaicGenerator.TILE_SIZE = self.mosaic_args.pixels
+		MosaicGenerator.TILE_MATCH_RES = self.mosaic_args.resolution
 		MosaicGenerator.ENLARGEMENT = self.mosaic_args.enlargement
 		MosaicGenerator.OUT_FILE = self.mosaic_args.out_file
-		tiles_data = MosaicGenerator.TileProcessor(self.mosaic_args.tiles_directory).get_tiles()
-		image_data = MosaicGenerator.TargetImage(self.mosaic_args.image_to_recreate).get_data()
+		tiles_data = MosaicGenerator.TileProcessor(self.mosaic_args.directory).get_tiles()
+		image_data = MosaicGenerator.TargetImage(self.mosaic_args.image).get_data()
 		self.compose(image_data, tiles_data)
 
 ##### LEGACY SUPPORT #####
