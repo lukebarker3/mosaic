@@ -7,6 +7,8 @@ class MosaicArgs:
     tile_dimensions: int = 50
     tile_matching_resolution: int = 5
     enlargement: int = 8
+    out_file: str = "./mosaic-image.jpeg"
+    verbose: bool = False
 
     def __init__(self, **kwargs):
         for k,v in kwargs.items():
