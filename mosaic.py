@@ -1,5 +1,4 @@
-import sys
-import os
+import logging, os, sys
 from PIL import Image
 from multiprocessing import Process, Queue, cpu_count
 from utils import MosaicArgs
@@ -13,9 +12,11 @@ class MosaicGenerator:
 	OUT_FILE = 'mosaic.jpeg'
 	EOQ_VALUE = None
 
+	@staticmethod
 	def tile_block_size():
 		return TILE_SIZE / max(min(TILE_MATCH_RES, TILE_SIZE), 1)
 
+	@staticmethod
 	def worker_count():
 		return max(cpu_count() - 1, 1)
 
@@ -35,7 +36,7 @@ class MosaicGenerator:
 				img = img.crop((w_crop, h_crop, w - w_crop, h - h_crop))
 
 				large_tile_img = img.resize((TILE_SIZE, TILE_SIZE), Image.ANTIALIAS)
-				small_tile_img = img.resize((int(TILE_SIZE/TILE_BLOCK_SIZE), int(TILE_SIZE/TILE_BLOCK_SIZE)), Image.ANTIALIAS)
+				small_tile_img = img.resize((int(TILE_SIZE/MosaicGenerator.tile_block_size()), int(TILE_SIZE/MosaicGenerator.tile_block_size())), Image.ANTIALIAS)
 
 				return (large_tile_img.convert('RGB'), small_tile_img.convert('RGB'))
 			except:
@@ -45,12 +46,12 @@ class MosaicGenerator:
 			large_tiles = []
 			small_tiles = []
 
-			print('Reading tiles from {}...'.format(self.tiles_directory))
+			logging.debug('Reading tiles from {}...'.format(self.tiles_directory))
 
 			# search the tiles directory recursively
 			for root, subFolders, files in os.walk(self.tiles_directory):
 				for tile_name in files:
-					print('Reading {:40.40}'.format(tile_name), flush=True, end='\r')
+					logging.debug('Reading {:40.40}'.format(tile_name), flush=True, end='\r')
 					tile_path = os.path.join(root, tile_name)
 					large_tile, small_tile = self.__process_tile(tile_path)
 					if large_tile:
@@ -58,7 +59,7 @@ class MosaicGenerator:
 						small_tiles.append(small_tile)
 
 
-			print('Processed {} tiles.'.format(len(large_tiles)))
+			logging.info('Processed {} tiles.'.format(len(large_tiles)))
 
 			return (large_tiles, small_tiles)
 
@@ -67,7 +68,7 @@ class MosaicGenerator:
 			self.image_path = image_path
 
 		def get_data(self):
-			print('Processing main image...')
+			logging.info('Processing main image...')
 			img = Image.open(self.image_path)
 			w = img.size[0] * ENLARGEMENT
 			h = img.size[1]	* ENLARGEMENT
@@ -79,11 +80,11 @@ class MosaicGenerator:
 			if w_diff or h_diff:
 				large_img = large_img.crop((w_diff, h_diff, w - w_diff, h - h_diff))
 
-			small_img = large_img.resize((int(w/TILE_BLOCK_SIZE), int(h/TILE_BLOCK_SIZE)), Image.ANTIALIAS)
+			small_img = large_img.resize((int(w/MosaicGenerator.tile_block_size()), int(h/MosaicGenerator.tile_block_size())), Image.ANTIALIAS)
 
 			image_data = (large_img.convert('RGB'), small_img.convert('RGB'))
 
-			print('Main image processed.')
+			logging.info('Main image processed.')
 
 			return image_data
 
@@ -116,7 +117,7 @@ class MosaicGenerator:
 
 			return best_fit_tile_index
 
-	def fit_tiles(work_queue, result_queue, tiles_data):
+	def fit_tiles(self, work_queue, result_queue, tiles_data):
 		# this function gets run by the worker processes, one on each CPU core
 		tile_fitter = TileFitter(tiles_data)
 
@@ -140,7 +141,7 @@ class MosaicGenerator:
 
 		def update(self):
 			self.counter += 1
-			print("Progress: {:04.1f}%".format(100 * self.counter / self.total), flush=True, end='\r')
+			logging.debug("Progress: {:04.1f}%".format(100 * self.counter / self.total), flush=True, end='\r')
 
 	class MosaicImage:
 		def __init__(self, original_img):
@@ -157,10 +158,10 @@ class MosaicGenerator:
 		def save(self, path):
 			self.image.save(path)
 
-	def build_mosaic(result_queue, all_tile_data_large, original_img_large):
+	def build_mosaic(self, result_queue, all_tile_data_large, original_img_large):
 		mosaic = MosaicImage(original_img_large)
 
-		active_workers = WORKER_COUNT
+		active_workers = MosaicGenerator.worker_count()
 		while True:
 			try:
 				img_coords, best_fit_tile_index = result_queue.get()
@@ -177,10 +178,10 @@ class MosaicGenerator:
 				pass
 
 		mosaic.save(OUT_FILE)
-		print('\nFinished, output is in', OUT_FILE)
+		logging.info('\nFinished, output is in', OUT_FILE)
 
-	def compose(original_img, tiles):
-		print('Building mosaic, press Ctrl-C to abort...')
+	def compose(self, original_img, tiles):
+		logging.info('Building mosaic, press Ctrl-C to abort...')
 		original_img_large, original_img_small = original_img
 		tiles_large, tiles_small = tiles
 
@@ -189,31 +190,31 @@ class MosaicGenerator:
 		all_tile_data_large = [list(tile.getdata()) for tile in tiles_large]
 		all_tile_data_small = [list(tile.getdata()) for tile in tiles_small]
 
-		work_queue   = Queue(WORKER_COUNT)	
+		work_queue   = Queue(MosaicGenerator.worker_count())	
 		result_queue = Queue()
 
 		try:
 			# start the worker processes that will build the mosaic image
-			Process(target=build_mosaic, args=(result_queue, all_tile_data_large, original_img_large)).start()
+			Process(target=self.build_mosaic, args=(result_queue, all_tile_data_large, original_img_large)).start()
 
 			# start the worker processes that will perform the tile fitting
-			for n in range(WORKER_COUNT):
-				Process(target=fit_tiles, args=(work_queue, result_queue, all_tile_data_small)).start()
+			for n in range(MosaicGenerator.worker_count()):
+				Process(target=self.fit_tiles, args=(work_queue, result_queue, all_tile_data_small)).start()
 
 			progress = ProgressCounter(mosaic.x_tile_count * mosaic.y_tile_count)
 			for x in range(mosaic.x_tile_count):
 				for y in range(mosaic.y_tile_count):
 					large_box = (x * TILE_SIZE, y * TILE_SIZE, (x + 1) * TILE_SIZE, (y + 1) * TILE_SIZE)
-					small_box = (x * TILE_SIZE/TILE_BLOCK_SIZE, y * TILE_SIZE/TILE_BLOCK_SIZE, (x + 1) * TILE_SIZE/TILE_BLOCK_SIZE, (y + 1) * TILE_SIZE/TILE_BLOCK_SIZE)
+					small_box = (x * TILE_SIZE/MosaicGenerator.tile_block_size(), y * TILE_SIZE/MosaicGenerator.tile_block_size(), (x + 1) * TILE_SIZE/MosaicGenerator.tile_block_size(), (y + 1) * TILE_SIZE/MosaicGenerator.tile_block_size())
 					work_queue.put((list(original_img_small.crop(small_box).getdata()), large_box))
 					progress.update()
 
 		except KeyboardInterrupt:
-			print('\nHalting, saving partial image please wait...')
+			logging.info('\nHalting, saving partial image please wait...')
 
 		finally:
 			# put these special values onto the queue to let the workers know they can terminate
-			for n in range(WORKER_COUNT):
+			for n in range(MosaicGenerator.worker_count()):
 				work_queue.put((EOQ_VALUE, EOQ_VALUE))
 
 
@@ -227,7 +228,7 @@ class MosaicGenerator:
 		MosaicGenerator.OUT_FILE = self.mosaic_args.out_file
 		tiles_data = MosaicGenerator.TileProcessor(self.mosaic_args.tiles_directory).get_tiles()
 		image_data = MosaicGenerator.TargetImage(self.mosaic_args.image_to_recreate).get_data()
-		MosaicGenerator.compose(image_data, tiles_data)
+		self.compose(image_data, tiles_data)
 
 ##### LEGACY SUPPORT #####
 
