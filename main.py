@@ -4,6 +4,9 @@ from mosaic import MosaicGenerator
 
 import logging, os, utils
 
+import multiprocessing
+multiprocessing.set_start_method('spawn', True)
+
 
 class MosaicApp(CommandLineApp):
     mosaic_args: utils.MosaicArgs = None
@@ -14,8 +17,8 @@ class MosaicApp(CommandLineApp):
         """
         self.add_param('-i', '--image', required=True, action='store', help='File path of the image to be re-created as a mosaic.', type=str)
         self.add_param('-d', '--directory', required=True, action='store', help='File path of the folder containing tiles to use for creating the mosaic.', type=str)
-        self.add_param('-p', '--pixels', required=False, default=utils.MosaicArgs.tile_dimensions, action='store', help='Pixel dimensions of each tile. E.g. 32 will create 32x32 tiles.', type=int)
-        self.add_param('-r', '--resolution', required=False, default=utils.MosaicArgs.tile_matching_resolution, action='store', help='Tile matching resolution - higher values give better fit but require more processing.', type=int)
+        self.add_param('-p', '--pixels', required=False, default=utils.MosaicArgs.pixels, action='store', help='Pixel dimensions of each tile. E.g. 32 will create 32x32 tiles.', type=int)
+        self.add_param('-r', '--resolution', required=False, default=utils.MosaicArgs.resolution, action='store', help='Tile matching resolution - higher values give better fit but require more processing.', type=int)
         self.add_param('-e', '--enlargement', required=False, default=utils.MosaicArgs.enlargement, action='store', help='The mosaic image\'s dimensions will be this many times larger than the original.')
         self.add_param('-o', '--out-file', required=False, default=utils.MosaicArgs.out_file, action='store', help='Send mosaic image to a custom file name.', type=str)
         self.add_param('-v', '--verbose', default=utils.MosaicArgs.verbose, action='store_true', help='Verbose logging.')
@@ -42,16 +45,17 @@ class MosaicApp(CommandLineApp):
         Runs the Mosaic CLI.
         """
         try:
+            self.mosaic_args = utils.MosaicArgs.from_namespace(self.params)
             self._validate_mosaic_args()
         except ValueError as e:
-            logging.exception("Invalid input to Mosaic CLI detected!", exc_info=e.with_traceback())
+            logging.exception("Invalid input to Mosaic CLI detected!", e.with_traceback())
 
         # mosaic args should be valid at this point
         try:
             self.generator = MosaicGenerator(self.mosaic_args)
             self.generator.run()
         except Exception as e:
-            logging.exception("Something went wrong whilst attempting to generate the mosaic.", exc_info=e.with_traceback())
+            logging.exception("Something went wrong whilst attempting to generate the mosaic.", e.with_traceback())
 
 
 if __name__ == "__main__":
