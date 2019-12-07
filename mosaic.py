@@ -2,6 +2,7 @@ import sys
 import os
 from PIL import Image
 from multiprocessing import Process, Queue, cpu_count
+from utils import MosaicArgs
 
 # Change these 3 config parameters to suit your needs...
 TILE_SIZE      = 50		# height/width of mosaic tiles in pixels
@@ -210,6 +211,18 @@ def compose(original_img, tiles):
 		for n in range(WORKER_COUNT):
 			work_queue.put((EOQ_VALUE, EOQ_VALUE))
 
+
+class MosaicGenerator:
+	mosaic_args: MosaicArgs = None
+
+	def __init__(self, mosaic_args):
+		self.mosaic_args = mosaic_args
+
+	def run(self):
+		pass
+
+##### LEGACY SUPPORT #####
+
 def mosaic(img_path, tiles_path):
 	tiles_data = TileProcessor(tiles_path).get_tiles()
 	image_data = TargetImage(img_path).get_data()
@@ -221,3 +234,4 @@ if __name__ == '__main__':
 	else:
 		mosaic(sys.argv[1], sys.argv[2])
 
+##### LEGACY SUPPORT #####
