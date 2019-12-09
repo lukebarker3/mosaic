@@ -2,7 +2,7 @@ from cli.app import CommandLineApp
 from PIL import Image
 from mosaic import MosaicGenerator
 
-import logging, os, utils
+import logging, os, requests, utils
 
 import multiprocessing
 multiprocessing.set_start_method('spawn', True)
@@ -15,7 +15,7 @@ class MosaicApp(CommandLineApp):
         """
         Generates expected parameters for the Mosaic CLI.
         """
-        self.add_param('-i', '--image', required=True, action='store', help='File path of the image to be re-created as a mosaic.', type=str)
+        self.add_param('-i', '--image', required=True, action='store', help='File path / URL of the image to be re-created as a mosaic.', type=str)
         self.add_param('-d', '--directory', required=True, action='store', help='File path of the folder containing tiles to use for creating the mosaic.', type=str)
         self.add_param('-p', '--pixels', required=False, default=utils.MosaicArgs.pixels, action='store', help='Pixel dimensions of each tile. E.g. 32 will create 32x32 tiles.', type=int)
         self.add_param('-r', '--resolution', required=False, default=utils.MosaicArgs.resolution, action='store', help='Tile matching resolution - higher values give better fit but require more processing.', type=int)
@@ -32,6 +32,23 @@ class MosaicApp(CommandLineApp):
         """
         # set logging level
         logging.basicConfig(format='%(asctime)s %(message)s', level=utils.parse_log_level(self.mosaic_args.verbose))
+        self._validate_image_path()
+        self._validate_tiles_directory()
+
+    def _validate_image_path(self):
+        # if image path is URL - check image is available first
+        if self.mosaic_args.image.startswith("http"):
+            image_resp = requests.get(self.mosaic_args.image)
+            if image_resp.ok is False:
+                raise ValueError(f"Unable to download image from '{self.mosaic_args.image}'.")
+        # if image path is local to machine
+        if os.path.exists(self.mosaic_args.image) is False:
+            raise ValueError(f"Image file '{self.mosaic_args.image}' does not exist.")
+
+    def _validate_tiles_directory(self):
+        # check directory exists locally
+        if os.path.exists(self.mosaic_args.directory) is False:
+            raise ValueError(f"Tiles directory '{self.mosaic_args.directory}' does not exist.")
 
     def setup(self):
         """
