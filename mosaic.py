@@ -1,7 +1,9 @@
-import logging, os, sys
-from PIL import Image
+from io import BytesIO
 from multiprocessing import Process, Queue, cpu_count
+from PIL import Image
 from utils import MosaicArgs
+
+import logging, os, requests, sys
 
 
 class MosaicGenerator:
@@ -69,8 +71,16 @@ class MosaicGenerator:
 			self.image_path = image_path
 
 		def get_data(self):
-			logging.info('Processing main image...')
-			img = Image.open(self.image_path)
+			if self.image_path.startswith('http'):
+				logging.info("Downloading image from URL...")
+				resp = requests.get(self.image_path)
+				img = Image.open(BytesIO(resp.content))
+			else:
+				logging.info("Retrieving image from file system...")
+				img = Image.open(self.image_path)
+
+			logging.info('Processing retrieved main image...')
+
 			w = img.size[0] * MosaicGenerator.ENLARGEMENT
 			h = img.size[1]	* MosaicGenerator.ENLARGEMENT
 			large_img = img.resize((w, h), Image.ANTIALIAS)
