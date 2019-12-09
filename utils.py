@@ -29,7 +29,7 @@ class MosaicArgs:
         return MosaicArgs(**namespace_dict)
 
 def parse_log_level(verbose:bool=False):
-    return logging.DEBUG if verbose is True else logging.WARNING
+    return logging.DEBUG if verbose is True else logging.INFO
 
 def reduce_fraction(numerator: int, denominator: int):
     can_be_reduced = True
