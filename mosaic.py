@@ -5,6 +5,7 @@ from utils import MosaicArgs
 
 import logging, os, requests, sys
 
+# https://stackoverflow.com/questions/51152059/pillow-in-python-wont-let-me-open-image-exceeds-limit
 Image.MAX_IMAGE_PIXELS = 933120000
 
 
