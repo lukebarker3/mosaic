@@ -5,6 +5,8 @@ from utils import MosaicArgs
 
 import logging, os, requests, sys
 
+Image.MAX_IMAGE_PIXELS = 933120000
+
 
 class MosaicGenerator:
 	mosaic_args: MosaicArgs = None
