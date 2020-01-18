@@ -65,7 +65,7 @@ class MosaicGenerator:
 						small_tiles.append(small_tile)
 
 
-			logging.info('Processed {} tiles.'.format(len(large_tiles)))
+			logging.info('Finished processing tiles.')
 
 			return (large_tiles, small_tiles)
 
@@ -119,7 +119,7 @@ class MosaicGenerator:
 				i += 1
 			return diff
 
-		def get_best_fit_tile(self, img_data):
+		def get_best_fit_tile(self, img_data, good_enough_diff = 25000):
 			best_fit_tile_index = None
 			min_diff = sys.maxsize
 			tile_index = 0
@@ -131,7 +131,7 @@ class MosaicGenerator:
 					min_diff = diff
 					best_fit_tile_index = tile_index
 					# "optimisation vs quality" hack
-					if min_diff <= 25000:
+					if min_diff <= good_enough_diff:
 						return best_fit_tile_index
 				tile_index += 1
 			return best_fit_tile_index
@@ -237,7 +237,6 @@ class MosaicGenerator:
 			# put these special values onto the queue to let the workers know they can terminate
 			for n in range(MosaicGenerator.worker_count()):
 				work_queue.put((MosaicGenerator.EOQ_VALUE, MosaicGenerator.EOQ_VALUE))
-
 
 	def __init__(self, mosaic_args):
 		self.mosaic_args = mosaic_args
