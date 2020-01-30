@@ -49,18 +49,22 @@ class MosaicGenerator:
 			large_tiles = []
 			small_tiles = []
 
-			logging.debug('Reading tiles from {}...'.format(self.tiles_directory))
+			if self.tiles_directory:
+				logging.info('Reading tiles from {}...'.format(self.tiles_directory))
 
-			# search the tiles directory recursively
-			for root, subFolders, files in os.walk(self.tiles_directory):
-				for tile_name in files:
-					logging.debug('Reading {:40.40}\r'.format(tile_name))
-					tile_path = os.path.join(root, tile_name)
-					large_tile, small_tile = self.__process_tile(tile_path)
-					if large_tile:
-						large_tiles.append(large_tile)
-						small_tiles.append(small_tile)
+				# search the tiles directory recursively
+				for root, subFolders, files in os.walk(self.tiles_directory):
+					for tile_name in files:
+						logging.debug('Reading {:40.40}\r'.format(tile_name))
+						tile_path = os.path.join(root, tile_name)
+						large_tile, small_tile = self.__process_tile(tile_path)
+						if large_tile:
+							large_tiles.append(large_tile)
+							small_tiles.append(small_tile)
+			else:
+				logging.info('Creating basic coloured tiles...')
 
+				
 
 			logging.info('Processed {} tiles.'.format(len(large_tiles)))
 

@@ -16,7 +16,7 @@ class MosaicApp(CommandLineApp):
         Generates expected parameters for the Mosaic CLI.
         """
         self.add_param('-i', '--image', required=True, action='store', help='File path / URL of the image to be re-created as a mosaic.', type=str)
-        self.add_param('-d', '--directory', required=True, action='store', help='File path of the folder containing tiles to use for creating the mosaic.', type=str)
+        self.add_param('-d', '--directory', required=False, action='store', help='File path of the folder containing tiles to use for creating the mosaic.', type=str)
         self.add_param('-p', '--pixels', required=False, default=utils.MosaicArgs.pixels, action='store', help='Pixel dimensions of each tile. E.g. 32 will create 32x32 tiles.', type=int)
         self.add_param('-r', '--resolution', required=False, default=utils.MosaicArgs.resolution, action='store', help='Tile matching resolution - higher values give better fit but require more processing.', type=int)
         self.add_param('-e', '--enlargement', required=False, default=utils.MosaicArgs.enlargement, action='store', help='The mosaic image\'s dimensions will be this many times larger than the original.')
@@ -47,7 +47,7 @@ class MosaicApp(CommandLineApp):
 
     def _validate_tiles_directory(self):
         # check directory exists locally
-        if os.path.exists(self.mosaic_args.directory) is False:
+        if self.mosaic_args.directory is True and os.path.exists(self.mosaic_args.directory) is False:
             raise ValueError(f"Tiles directory '{self.mosaic_args.directory}' does not exist.")
 
     def setup(self):
