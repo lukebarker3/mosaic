@@ -5,6 +5,9 @@ from utils import MosaicArgs
 
 import logging, os, requests, sys
 
+# https://stackoverflow.com/questions/51152059/pillow-in-python-wont-let-me-open-image-exceeds-limit
+Image.MAX_IMAGE_PIXELS = 933120000
+
 
 class MosaicGenerator:
 	mosaic_args: MosaicArgs = None
@@ -66,7 +69,7 @@ class MosaicGenerator:
 
 				
 
-			logging.info('Processed {} tiles.'.format(len(large_tiles)))
+			logging.info('Finished processing tiles.')
 
 			return (large_tiles, small_tiles)
 
@@ -120,7 +123,7 @@ class MosaicGenerator:
 				i += 1
 			return diff
 
-		def get_best_fit_tile(self, img_data):
+		def get_best_fit_tile(self, img_data, good_enough_diff = 25000):
 			best_fit_tile_index = None
 			min_diff = sys.maxsize
 			tile_index = 0
@@ -132,7 +135,7 @@ class MosaicGenerator:
 					min_diff = diff
 					best_fit_tile_index = tile_index
 					# "optimisation vs quality" hack
-					if min_diff <= 25000:
+					if min_diff <= good_enough_diff:
 						return best_fit_tile_index
 				tile_index += 1
 			return best_fit_tile_index
@@ -238,7 +241,6 @@ class MosaicGenerator:
 			# put these special values onto the queue to let the workers know they can terminate
 			for n in range(MosaicGenerator.worker_count()):
 				work_queue.put((MosaicGenerator.EOQ_VALUE, MosaicGenerator.EOQ_VALUE))
-
 
 	def __init__(self, mosaic_args):
 		self.mosaic_args = mosaic_args

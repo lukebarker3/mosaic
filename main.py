@@ -42,7 +42,7 @@ class MosaicApp(CommandLineApp):
             if image_resp.ok is False:
                 raise ValueError(f"Unable to download image from '{self.mosaic_args.image}'.")
         # if image path is local to machine
-        if os.path.exists(self.mosaic_args.image) is False:
+        elif os.path.exists(self.mosaic_args.image) is False:
             raise ValueError(f"Image file '{self.mosaic_args.image}' does not exist.")
 
     def _validate_tiles_directory(self):
@@ -65,16 +65,21 @@ class MosaicApp(CommandLineApp):
             self.mosaic_args = utils.MosaicArgs.from_namespace(self.params)
             self._validate_mosaic_args()
         except ValueError as e:
-            logging.exception("Invalid input to Mosaic CLI detected!", e.with_traceback())
+            logging.exception("Invalid input to Mosaic CLI detected!", e)
+            raise e
 
         # mosaic args should be valid at this point
         try:
             self.generator = MosaicGenerator(self.mosaic_args)
             self.generator.run()
         except Exception as e:
-            logging.exception("Something went wrong whilst attempting to generate the mosaic.", e.with_traceback())
+            logging.exception("Something went wrong whilst attempting to generate the mosaic.", e)
+            raise e
 
 
 if __name__ == "__main__":
     app = MosaicApp()
-    app.run()
+    try:
+        app.run()
+    except Exception as e:
+        logging.exception("Something went wrong!", e)
