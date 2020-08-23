@@ -1,10 +1,13 @@
+import logging
+import multiprocessing
+import os
+import requests
+import utils
+
 from cli.app import CommandLineApp
-from PIL import Image
+
 from mosaic import MosaicGenerator
 
-import logging, os, requests, utils
-
-import multiprocessing
 multiprocessing.set_start_method('spawn', True)
 
 

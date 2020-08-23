@@ -2,6 +2,7 @@ from io import BytesIO
 from multiprocessing import Process, Queue, cpu_count
 from PIL import Image
 from utils import MosaicArgs
+from pprint import pprint
 
 import logging, os, requests, sys
 
@@ -14,7 +15,7 @@ class MosaicGenerator:
 	TILE_SIZE      = 50
 	TILE_MATCH_RES =  5
 	ENLARGEMENT    =  8
-	OUT_FILE = 'mosaic.jpeg'
+	OUT_FILE = 'mosaic.png'
 	EOQ_VALUE = None
 
 	@staticmethod
@@ -170,6 +171,10 @@ class MosaicGenerator:
 	class MosaicImage:
 		def __init__(self, original_img):
 			self.image = Image.new(original_img.mode, original_img.size)
+			logging.info("original_img info:")
+			pprint(original_img.__dict__)
+			logging.info("self.image info:")
+			pprint(self.image.__dict__)
 			self.x_tile_count = int(original_img.size[0] / MosaicGenerator.TILE_SIZE)
 			self.y_tile_count = int(original_img.size[1] / MosaicGenerator.TILE_SIZE)
 			self.total_tiles  = self.x_tile_count * self.y_tile_count
@@ -177,10 +182,12 @@ class MosaicGenerator:
 		def add_tile(self, tile_data, coords):
 			img = Image.new('RGB', (MosaicGenerator.TILE_SIZE, MosaicGenerator.TILE_SIZE))
 			img.putdata(tile_data)
+			logging.info("tile info:")
+			pprint(img.__dict__)
 			self.image.paste(img, coords)
 
 		def save(self, path):
-			self.image.save(path)
+			self.image.save(path, format='png')
 
 	@staticmethod
 	def build_mosaic(result_queue, all_tile_data_large, original_img_large):
