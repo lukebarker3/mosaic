@@ -12,8 +12,8 @@ Image.MAX_IMAGE_PIXELS = 933120000
 class MosaicGenerator:
 	mosaic_args: MosaicArgs = None
 	TILE_SIZE      = 50
-	TILE_MATCH_RES = 5
-	ENLARGEMENT    = 8
+	TILE_MATCH_RES =  5
+	ENLARGEMENT    =  8
 	OUT_FILE = 'mosaic.jpeg'
 	EOQ_VALUE = None
 
