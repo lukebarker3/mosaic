@@ -260,18 +260,3 @@ class MosaicGenerator:
 		tiles_data = MosaicGenerator.TileProcessor(self.mosaic_args.directory).get_tiles()
 		image_data = MosaicGenerator.TargetImage(self.mosaic_args.image).get_data()
 		self.compose(image_data, tiles_data)
-
-##### LEGACY SUPPORT #####
-
-def mosaic(img_path, tiles_path):
-	tiles_data = MosaicGenerator.TileProcessor(tiles_path).get_tiles()
-	image_data = MosaicGenerator.TargetImage(img_path).get_data()
-	MosaicGenerator.compose(image_data, tiles_data)
-
-if __name__ == '__main__':
-	if len(sys.argv) < 3:
-		print('Usage: {} <image> <tiles directory>\r'.format(sys.argv[0]))
-	else:
-		mosaic(sys.argv[1], sys.argv[2])
-
-##### LEGACY SUPPORT #####
