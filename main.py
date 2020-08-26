@@ -8,8 +8,6 @@ from cli.app import CommandLineApp
 
 from mosaic import MosaicGenerator
 
-multiprocessing.set_start_method('spawn', True)
-
 
 class MosaicApp(CommandLineApp):
     mosaic_args: utils.MosaicArgs = None
@@ -81,6 +79,7 @@ class MosaicApp(CommandLineApp):
 
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method('spawn', True)
     app = MosaicApp()
     try:
         app.run()
